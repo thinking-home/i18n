@@ -12,6 +12,12 @@ export const count = (content: Partial<Record<PluralForm, string>>) =>
     content,
   } as const);
 
-export type Content = ReturnType<typeof text> | ReturnType<typeof count>;
+export type PlainContent = ReturnType<typeof text>;
+export type PluralContent = ReturnType<typeof count>;
+export type Content = PlainContent | PluralContent;
 
-export type Keyset<T extends string> = Record<T, Content>;
+export type Params<T extends Content["type"]> = T extends "plural"
+  ? { count: number }
+  : { [key: string]: unknown };
+
+export type Keyset = Record<string, Content>;

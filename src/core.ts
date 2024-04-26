@@ -1,5 +1,5 @@
 import { CompiledTemplate, compileTemplate } from "./compileTemplate";
-import { Content, Keyset, PluralForm } from "./model";
+import { Content, Keyset, Params, PluralForm } from "./model";
 
 export type TParams = { count?: number; [key: string]: unknown };
 
@@ -32,27 +32,30 @@ export class Ctx {
   }
 }
 
-export class I18n<Key extends string, T extends Keyset<Key>> {
-  constructor(private def: Keyset<Key>, private ctx: Ctx) {}
+export class I18n<A extends Keyset> {
+    constructor(private keyset: A, private ctx: Ctx) {
 
-  private getMessage(key: keyof T): string {
-    const definition: Content = this.def[key];
-
-    switch (definition.type) {
-      case "plain":
-        return this.ctx.getMessage(String(key)) || definition.content;
-      case "plural":
-        return "";
     }
-  }
 
-  translateRaw(key: keyof T, params: TParams): unknown[] {
-    let message = this.getMessage(key);
+    translateRaw<K extends keyof A>(key: K, params: Params<A[K]['type']>): unknown[] {
+        const k = String(key);
+        const { type, content }: Content = this.keyset[k];
+        let message: string = '';
 
-    return this.ctx.getTemplate(message)(params);
-  }
+        switch (type) {
+            case 'plain':
+                message = this.ctx.getMessage(k) || content;
+                break;
+            case 'plural':
+                const form = this.ctx.pluralRules.select(Number(params.count));
+                message = this.ctx.getMessage(k, form) || content[form] || k;
+                break;
+        }
 
-  translate(key: keyof T, params: TParams): string {
-    return this.translateRaw(key, params).join("");
-  }
+        return this.ctx.getTemplate(message)(params);
+    }
+
+    translate<K extends keyof A>(key: K, params: Params<A[K]['type']>): string {
+        return this.translateRaw(key, params).join("");
+    }
 }

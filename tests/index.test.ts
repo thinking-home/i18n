@@ -31,3 +31,38 @@ it("если в контексте есть перевод для ключа, т
 
   expect(i.translate("hello", { name: "Вася" })).toBe("Привет, Вася!");
 });
+
+it("используется форма слова, в зависимости от количества", () => {
+  const ctx = new Ctx("ru", {});
+
+  const keyset = {
+    amout: count({
+      one: "{count} сообщение",
+      two: "{count} сообщения",
+      many: "{count} сообщений",
+    }),
+  };
+
+  const i = new I18n(keyset, ctx);
+
+  expect(i.translate("amout", { count: 21 })).toBe("21 сообщение");
+});
+
+it("используется форма слова из контекста, в зависимости от количества", () => {
+  const ctx = new Ctx("en", {
+    amount_one: "one message",
+    amount_other: "{count} messages",
+  });
+
+  const keyset = {
+    amount: count({
+      one: "{count} сообщение",
+      two: "{count} сообщения",
+      many: "{count} сообщений",
+    }),
+  };
+
+  const i = new I18n(keyset, ctx);
+
+  expect(i.translate("amount", { count: 21 })).toBe("21 messages");
+});
