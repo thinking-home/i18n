@@ -3,4 +3,4 @@
 
 # override above and include dist
 !README.md
-!dist
+!dist/**/*
