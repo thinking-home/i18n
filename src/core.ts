@@ -3,26 +3,35 @@ import { Content, Keyset, Params, PluralForm } from "./model";
 
 export type TParams = { count?: number; [key: string]: unknown };
 
+export interface CtxArgs {
+  locale: string; // текущий выбранный язык
+  defaultLocale: string; // язык, на котором написаны тексты по умолчанию
+  messages?: Record<string, string>;
+}
+
 export class Ctx {
   readonly pluralRules: Intl.PluralRules;
   readonly dateTimeFormat: Intl.DateTimeFormat;
 
+  readonly messages: Record<string, string>;
+  readonly locale: string;
+  readonly defaultLocale: string;
+
   private readonly templates: Record<string, CompiledTemplate> = {};
 
-  constructor(
-    public readonly locale: string,
-    public readonly messages: Record<string, string>
-  ) {
+  constructor({ locale, defaultLocale, messages = {} }: CtxArgs) {
+    this.messages = messages;
+    this.locale = locale;
+    this.defaultLocale = defaultLocale;
     this.pluralRules = new Intl.PluralRules(locale);
     this.dateTimeFormat = new Intl.DateTimeFormat(locale);
   }
 
   public getTemplate(message: string): CompiledTemplate {
-    if (!this.templates[message]) {
-      this.templates[message] = compileTemplate(message);
-    }
-
-    return this.templates[message];
+    return (
+      this.templates[message] ||
+      (this.templates[message] = compileTemplate(message))
+    );
   }
 
   getMessage(key: string, form?: PluralForm) {
@@ -33,29 +42,42 @@ export class Ctx {
 }
 
 export class I18n<A extends Keyset> {
-    constructor(private keyset: A, private ctx: Ctx) {
+  constructor(private keyset: A, private ctx: Ctx) {}
 
+  private getMessage<K extends keyof A>(
+    key: K,
+    params: Params<A[K]["type"]>,
+    { type, content }: Content
+  ): string | undefined {
+    const k = String(key);
+
+    switch (type) {
+      case "plain":
+        return this.ctx.getMessage(k) || content;
+      case "plural":
+        const form = this.ctx.pluralRules.select(Number(params.count));
+        return this.ctx.getMessage(k, form) || content[form] || k;
     }
+  }
 
-    translateRaw<K extends keyof A>(key: K, params: Params<A[K]['type']>): unknown[] {
-        const k = String(key);
-        const { type, content }: Content = this.keyset[k];
-        let message: string = '';
+  translateRaw<K extends keyof A>(
+    key: K,
+    params: Params<A[K]["type"]>
+  ): unknown[] {
+    const obj = this.keyset[key];
 
-        switch (type) {
-            case 'plain':
-                message = this.ctx.getMessage(k) || content;
-                break;
-            case 'plural':
-                const form = this.ctx.pluralRules.select(Number(params.count));
-                message = this.ctx.getMessage(k, form) || content[form] || k;
-                break;
-        }
+    if (obj) {
+      const message = this.getMessage(key, params, obj);
 
+      if (message) {
         return this.ctx.getTemplate(message)(params);
+      }
     }
 
-    translate<K extends keyof A>(key: K, params: Params<A[K]['type']>): string {
-        return this.translateRaw(key, params).join("");
-    }
+    return [];
+  }
+
+  translate<K extends keyof A>(key: K, params: Params<A[K]["type"]>): string {
+    return this.translateRaw(key, params).join("");
+  }
 }
