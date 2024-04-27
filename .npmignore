@@ -1,1 +1,6 @@
+# ignore all
+**/*
+
+# override above and include dist
+!README.md
 !dist
