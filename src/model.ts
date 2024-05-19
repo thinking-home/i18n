@@ -19,5 +19,3 @@ export type Content = PlainContent | PluralContent;
 export type Params<T extends Content["type"]> = T extends "plural"
   ? { count: number }
   : { [key: string]: unknown };
-
-export type Keyset = Record<string, Content>;

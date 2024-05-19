@@ -1,4 +1,4 @@
-import { Ctx, I18n, compileTemplate, count, text } from "../src";
+import { Ctx, Keyset, compileTemplate, count, text } from "../src";
 
 it("шаблонизатор должен подставлять значения параметров вместо плейсхолдеров", () => {
   const t = compileTemplate("У меня { appleCount } яблок и {pieCount} пирог");
@@ -9,53 +9,40 @@ it("шаблонизатор должен подставлять значени�
 });
 
 it("если в контексте нет перевода для ключа, то должно использоваться значение по умолчанию", () => {
-  const ctx = new Ctx({
-    defaultLocale: "ru",
-    locale: "en",
+  const ctx = new Ctx({ locale: "ru" });
+
+  const i = new Keyset("en", {
+    hello: text("Hello, {name}!"),
   });
 
-  const keyset = {
-    hello: text("Hello, {name}!"),
-  };
-
-  const i = new I18n(keyset, ctx);
-
-  expect(i.translate("hello", { name: "Вася" })).toBe("Hello, Вася!");
+  expect(i.translate(ctx, "hello", { name: "Вася" })).toBe("Hello, Вася!");
 });
 
 it("если в контексте есть перевод для ключа, то должно использоваться значение из контекста", () => {
   const ctxRU = new Ctx({
-    defaultLocale: "ru",
-    locale: "en",
+    locale: "ru",
     messages: { hello: "Привет, {name}!" },
   });
 
-  const keyset = {
+  const i = new Keyset("en", {
     hello: text("Hello, {name}!"),
-  };
+  });
 
-  const i = new I18n(keyset, ctxRU);
-
-  expect(i.translate("hello", { name: "Вася" })).toBe("Привет, Вася!");
+  expect(i.translate(ctxRU, "hello", { name: "Вася" })).toBe("Привет, Вася!");
 });
 
 it("используется форма слова, в зависимости от количества", () => {
-  const ctx = new Ctx({
-    defaultLocale: "ru",
-    locale: "ru",
-  });
+  const ctx = new Ctx({ locale: "ru" });
 
-  const keyset = {
+  const i = new Keyset("ru", {
     amout: count({
       one: "{count} сообщение",
       two: "{count} сообщения",
       many: "{count} сообщений",
     }),
-  };
+  });
 
-  const i = new I18n(keyset, ctx);
-
-  expect(i.translate("amout", { count: 21 })).toBe("21 сообщение");
+  expect(i.translate(ctx, "amout", { count: 21 })).toBe("21 сообщение");
 });
 
 it("используется форма слова из контекста, в зависимости от количества", () => {
@@ -64,19 +51,49 @@ it("используется форма слова из контекста, в �
       amount_one: "one message",
       amount_other: "{count} messages",
     },
-    defaultLocale: "ru",
     locale: "en",
   });
 
-  const keyset = {
+  const i = new Keyset("ru", {
     amount: count({
       one: "{count} сообщение",
       two: "{count} сообщения",
       many: "{count} сообщений",
     }),
-  };
+  });
 
-  const i = new I18n(keyset, ctx);
+  expect(i.translate(ctx, "amount", { count: 21 })).toBe("21 messages");
+});
 
-  expect(i.translate("amount", { count: 21 })).toBe("21 messages");
+it("если в контексте нет нужной формы слова, то используется форма для локали по умолчанию", () => {
+  const ctx = new Ctx({ locale: "en" });
+
+  const i = new Keyset("ru", {
+    amount: count({
+      one: "{count} сообщение",
+      two: "{count} сообщения",
+      many: "{count} сообщений",
+    }),
+  });
+
+  // в английском языке должна быть форма other,
+  // но т.к. такого ключа нет, то используется форма one из языка по умолчанию (ru)
+  expect(i.translate(ctx, "amount", { count: 21 })).toBe("21 сообщение");
+});
+
+it("можно переопределить правило формирования ключей, зависящих от количества", () => {
+  const ctx = new Ctx({
+    messages: {
+      amount$one: "one message",
+      amount$other: "{count} messages",
+    },
+    locale: "en",
+    getPluralKey: (key, form) => `${key}$${form}`,
+  });
+
+  const i = new Keyset("ru", {
+    amount: count({}),
+  });
+
+  expect(i.translate(ctx, "amount", { count: 2 })).toBe("21 messages");
 });
