@@ -95,5 +95,5 @@ it("можно переопределить правило формирован�
     amount: count({}),
   });
 
-  expect(i.translate(ctx, "amount", { count: 2 })).toBe("21 messages");
+  expect(i.translate(ctx, "amount", { count: 21 })).toBe("21 messages");
 });
