@@ -41,9 +41,9 @@ npm install @thinking-home/i18n
 2. Вы получаете контекст, содержащий тексты для заданного языка.
 
    ```ts
-   import { Ctx } from "@thinking-home/i18n";
+   import { Context } from "@thinking-home/i18n";
 
-   const ctx = new Ctx({
+   const ctx = new Context({
      locale: "ru",
      messages: {
        hello: "Привет, {name}!",

@@ -1,15 +1,15 @@
 import { CompiledTemplate, compileTemplate } from "./compileTemplate";
 import { Content, Params, PluralForm } from "./model";
 
-export type TParams = { count?: number; [key: string]: unknown };
+export type TParams = { count?: number;[key: string]: unknown };
 
-export interface CtxArgs {
+export interface ContextArgs {
   locale: string; // текущий выбранный язык
   messages?: Record<string, string>;
   getPluralKey?: (key: string, form?: PluralForm) => string;
 }
 
-export class Ctx {
+export class Context {
   readonly pluralRules: Intl.PluralRules;
 
   readonly getPluralKey: (key: string, form?: PluralForm) => string;
@@ -22,7 +22,7 @@ export class Ctx {
     locale,
     messages = {},
     getPluralKey = (k, f) => `${k}_${f}`,
-  }: CtxArgs) {
+  }: ContextArgs) {
     this.getPluralKey = getPluralKey;
     this.messages = messages;
     this.locale = locale;
@@ -51,10 +51,10 @@ export class Keyset<A extends Record<string, Content>> {
   }
 
   private getMessage<K extends keyof A>(
-    ctx: Ctx,
+    ctx: Context,
+    { type, content }: Content,
     key: K,
-    params: Params<A[K]["type"]>,
-    { type, content }: Content
+    params?: Params<A[K]["type"]>
   ): string | undefined {
     const k = String(key);
 
@@ -62,7 +62,7 @@ export class Keyset<A extends Record<string, Content>> {
       case "plain":
         return ctx.getMessage(k) || content || k;
       case "plural":
-        const count = Number(params.count);
+        const count = Number(params?.count || 0);
         const form = ctx.pluralRules.select(count);
 
         let message = ctx.getMessage(k, form);
@@ -78,14 +78,14 @@ export class Keyset<A extends Record<string, Content>> {
   }
 
   translateRaw<K extends keyof A>(
-    ctx: Ctx,
+    ctx: Context,
     key: K,
-    params: Params<A[K]["type"]>
+    params?: Params<A[K]["type"]>
   ): unknown[] {
     const obj = this.keyset[key];
 
     if (obj) {
-      const message = this.getMessage(ctx, key, params, obj);
+      const message = this.getMessage(ctx, obj, key, params);
 
       if (message) {
         return ctx.getTemplate(message)(params);
@@ -96,9 +96,9 @@ export class Keyset<A extends Record<string, Content>> {
   }
 
   translate<K extends keyof A>(
-    ctx: Ctx,
+    ctx: Context,
     key: K,
-    params: Params<A[K]["type"]>
+    params?: Params<A[K]["type"]>
   ): string {
     return this.translateRaw(ctx, key, params).join("");
   }
